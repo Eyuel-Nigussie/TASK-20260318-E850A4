@@ -371,6 +371,7 @@ class UploadService:
 
         session.idempotency_key = idempotency_key
         session.status = "FINALIZED"
+        session.finalized_file_blob_id = blob.id
         session.updated_at = datetime.utcnow()
 
         self.db.add(material_item)

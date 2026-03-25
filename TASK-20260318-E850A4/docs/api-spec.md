@@ -323,6 +323,11 @@ Request:
 }
 ```
 
+Invoice attachment linkage:
+
+- `invoice_upload_session_id` must reference a `FINALIZED` upload session.
+- Backend resolves invoice blob via deterministic linkage (`upload_sessions.finalized_file_blob_id`).
+
 Budget warning behavior:
 
 - If projected confirmed expense ratio `> 1.10`, transaction is created as `PENDING_CONFIRMATION` and response includes `budget_warning` with `requires_secondary_confirmation=true`.
@@ -385,10 +390,10 @@ Query params:
 
 ### GET `/users/{user_id}/profile`
 
-Any authenticated role can request.
+Access policy:
 
 - `SYSTEM_ADMIN`: unmasked values
-- non-admin roles: masked sensitive fields
+- non-admin roles: self-only access (`user_id == requester_id`) and masked sensitive fields
 
 ### PUT `/users/{user_id}/profile`
 
@@ -410,7 +415,7 @@ Admin-only. Creates local backup artifacts.
 Scheduler note:
 
 - Backend runs a daily scheduled backup task.
-- Scheduled backup failures are audit-logged (`error_code=SCHEDULER_ERROR`).
+- Scheduled backup failures are audit-logged (`error_code=SCHEDULER_ERROR`) and logged.
 
 ### GET `/system/backup/history`
 

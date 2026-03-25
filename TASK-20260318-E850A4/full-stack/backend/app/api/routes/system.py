@@ -39,6 +39,8 @@ def user_profile(
     request_id: str = Depends(get_request_id),
     db: Session = Depends(get_db),
 ):
+    if principal["role"].code != "SYSTEM_ADMIN" and principal["user"].id != user_id:
+        raise forbidden("Non-admin users can only access their own profile")
     service = SystemService(db)
     data = service.profile(requester_role=principal["role"].code, user_id=user_id)
     return {"success": True, "data": data, "meta": MetaInfo(request_id=request_id).model_dump()}

@@ -1,6 +1,7 @@
 import uuid
 from datetime import datetime, timedelta, timezone
 import asyncio
+import logging
 
 from fastapi import FastAPI, Request
 from fastapi.exceptions import RequestValidationError
@@ -32,6 +33,8 @@ app.add_middleware(
 
 app.include_router(api_router)
 
+logger = logging.getLogger(__name__)
+
 
 async def backup_scheduler_loop() -> None:
     if not settings.backup_schedule_enabled:
@@ -49,7 +52,6 @@ async def backup_scheduler_loop() -> None:
             SystemService(db).run_backup(created_by=1)
         except Exception as exc:
             from app.models.audit_log import AuditLog
-
             try:
                 db.add(
                     AuditLog(
@@ -68,9 +70,9 @@ async def backup_scheduler_loop() -> None:
                     )
                 )
                 db.commit()
-            except Exception as audit_exc:
+            except Exception:
                 db.rollback()
-                print(f"[backup_scheduler] failed to write audit log: {audit_exc}")
+                logger.exception("Failed to persist scheduler backup failure audit log")
         finally:
             db.close()
 
@@ -81,6 +83,7 @@ def seed_initial_data() -> None:
     with engine.begin() as conn:
         conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS id_number VARCHAR(64)"))
         conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS contact VARCHAR(64)"))
+        conn.execute(text("ALTER TABLE upload_sessions ADD COLUMN IF NOT EXISTS finalized_file_blob_id BIGINT REFERENCES file_blobs(id)"))
         conn.execute(
             text(
                 """

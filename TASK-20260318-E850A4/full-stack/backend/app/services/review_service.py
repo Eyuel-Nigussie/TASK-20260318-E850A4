@@ -1,6 +1,6 @@
 from datetime import datetime
 
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
@@ -257,18 +257,26 @@ class ReviewService:
 
     def queue(self, *, page: int, page_size: int, activity_id: int | None, status: str | None, keyword: str | None) -> dict:
         stmt = select(RegistrationForm).where(RegistrationForm.deleted_at.is_(None))
+        count_stmt = select(func.count(RegistrationForm.id)).where(RegistrationForm.deleted_at.is_(None))
         if activity_id is not None:
             stmt = stmt.where(RegistrationForm.activity_id == activity_id)
+            count_stmt = count_stmt.where(RegistrationForm.activity_id == activity_id)
         if status:
             stmt = stmt.where(RegistrationForm.status == status)
+            count_stmt = count_stmt.where(RegistrationForm.status == status)
         if keyword:
             stmt = stmt.where(RegistrationForm.id.cast(str).contains(keyword))
+            count_stmt = count_stmt.where(RegistrationForm.id.cast(str).contains(keyword))
 
-        rows = self.db.execute(stmt.order_by(RegistrationForm.updated_at.desc())).scalars().all()
-        total = len(rows)
+        total = int(self.db.execute(count_stmt).scalar_one())
         start = (page - 1) * page_size
-        end = start + page_size
-        page_rows = rows[start:end]
+        page_rows = (
+            self.db.execute(
+                stmt.order_by(RegistrationForm.updated_at.desc()).offset(start).limit(page_size)
+            )
+            .scalars()
+            .all()
+        )
 
         data = [
             {

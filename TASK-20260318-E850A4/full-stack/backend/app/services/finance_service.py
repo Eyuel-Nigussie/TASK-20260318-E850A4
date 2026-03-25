@@ -67,11 +67,15 @@ class FinanceService:
         if activity_id is not None:
             stmt = stmt.where(FundingAccount.activity_id == activity_id)
 
-        rows = self.db.execute(stmt.order_by(FundingAccount.id.asc())).scalars().all()
-        total = len(rows)
+        count_stmt = select(func.count(FundingAccount.id)).where(FundingAccount.deleted_at.is_(None))
+        if activity_id is not None:
+            count_stmt = count_stmt.where(FundingAccount.activity_id == activity_id)
+
+        total = int(self.db.execute(count_stmt).scalar_one())
         start = (page - 1) * page_size
-        end = start + page_size
-        page_rows = rows[start:end]
+        page_rows = (
+            self.db.execute(stmt.order_by(FundingAccount.id.asc()).offset(start).limit(page_size)).scalars().all()
+        )
         data = [
             {
                 "id": row.id,
@@ -148,7 +152,11 @@ class FinanceService:
             )
             if session is None:
                 raise not_found("Invoice upload session not found or not finalized")
-            blob = self._latest_blob_for_upload_session(session)
+            if session.finalized_file_blob_id is None:
+                raise not_found("Invoice upload session has no finalized file linkage")
+            blob = (
+                self.db.execute(select(FileBlob).where(FileBlob.id == session.finalized_file_blob_id).limit(1)).scalar_one_or_none()
+            )
             if blob is None:
                 raise not_found("Invoice file blob not found")
             invoice_blob_id = blob.id
@@ -300,11 +308,21 @@ class FinanceService:
         if to_dt:
             stmt = stmt.where(FundingTransaction.occurred_at <= self._parse_iso_datetime(to_dt))
 
-        rows = self.db.execute(stmt.order_by(FundingTransaction.occurred_at.desc())).scalars().all()
-        total = len(rows)
+        count_stmt = select(func.count(FundingTransaction.id)).where(FundingTransaction.activity_id == activity_id).where(FundingTransaction.deleted_at.is_(None))
+        if tx_type:
+            count_stmt = count_stmt.where(FundingTransaction.tx_type == tx_type)
+        if category:
+            count_stmt = count_stmt.where(FundingTransaction.category == category)
+        if from_dt:
+            count_stmt = count_stmt.where(FundingTransaction.occurred_at >= self._parse_iso_datetime(from_dt))
+        if to_dt:
+            count_stmt = count_stmt.where(FundingTransaction.occurred_at <= self._parse_iso_datetime(to_dt))
+
+        total = int(self.db.execute(count_stmt).scalar_one())
         start = (page - 1) * page_size
-        end = start + page_size
-        page_rows = rows[start:end]
+        page_rows = (
+            self.db.execute(stmt.order_by(FundingTransaction.occurred_at.desc()).offset(start).limit(page_size)).scalars().all()
+        )
 
         data = [
             {
@@ -366,15 +384,6 @@ class FinanceService:
         data = list(buckets.values())
         data.sort(key=lambda x: x["key"])
         return {"activity_id": activity_id, "group_by": group_by, "items": data}
-
-    def _latest_blob_for_upload_session(self, session: UploadSession) -> FileBlob | None:
-        filename = session.original_filename
-        ext = filename.rsplit(".", 1)[-1].lower() if "." in filename else None
-
-        stmt = select(FileBlob).where(FileBlob.original_filename == filename)
-        if ext:
-            stmt = stmt.where(FileBlob.storage_path.ilike(f"%.{ext}"))
-        return self.db.execute(stmt.order_by(FileBlob.created_at.desc()).limit(1)).scalar_one_or_none()
 
     def _parse_iso_datetime(self, value: str) -> datetime:
         try:

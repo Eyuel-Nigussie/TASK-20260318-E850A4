@@ -4,10 +4,12 @@ import os
 import shutil
 import tarfile
 import uuid
+import hashlib
+from cryptography.fernet import Fernet
 import base64
 from datetime import datetime
 
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from app.core.config import settings
@@ -28,11 +30,11 @@ class SystemService:
         self.db = db
 
     def list_audit_logs(self, *, page: int, page_size: int) -> dict:
-        rows = self.db.execute(select(AuditLog).order_by(AuditLog.created_at.desc())).scalars().all()
-        total = len(rows)
+        total = int(self.db.execute(select(func.count(AuditLog.id))).scalar_one())
         start = (page - 1) * page_size
-        end = start + page_size
-        page_rows = rows[start:end]
+        page_rows = (
+            self.db.execute(select(AuditLog).order_by(AuditLog.created_at.desc()).offset(start).limit(page_size)).scalars().all()
+        )
         data = [
             {
                 "id": row.id,
@@ -149,11 +151,11 @@ class SystemService:
         return {"backup_id": row.backup_id, "status": row.status, "metadata_path": row.metadata_path}
 
     def backup_history(self, *, page: int, page_size: int) -> dict:
-        rows = self.db.execute(select(BackupRecord).order_by(BackupRecord.created_at.desc())).scalars().all()
-        total = len(rows)
+        total = int(self.db.execute(select(func.count(BackupRecord.id))).scalar_one())
         start = (page - 1) * page_size
-        end = start + page_size
-        page_rows = rows[start:end]
+        page_rows = (
+            self.db.execute(select(BackupRecord).order_by(BackupRecord.created_at.desc()).offset(start).limit(page_size)).scalars().all()
+        )
         data = [
             {
                 "backup_id": row.backup_id,
@@ -296,6 +298,11 @@ class SystemService:
                 shutil.copy2(src, dst)
 
     def encrypt_sensitive_config_value(self, value: str) -> str:
-        # Local reversible obfuscation to evidence encrypted-at-rest config handling in offline mode.
-        raw = value.encode("utf-8")
-        return base64.b64encode(raw).decode("ascii")
+        key = self._derive_local_fernet_key()
+        token = Fernet(key).encrypt(value.encode("utf-8"))
+        return token.decode("ascii")
+
+    def _derive_local_fernet_key(self) -> bytes:
+        seed = os.getenv("JWT_ACCESS_SECRET", "local-dev-key").encode("utf-8")
+        digest = hashlib.sha256(seed).digest()
+        return base64.urlsafe_b64encode(digest)

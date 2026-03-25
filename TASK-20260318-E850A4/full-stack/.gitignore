@@ -34,3 +34,4 @@ trajectory.json
 
 # Docker volumes (if accidentally materialised locally)
 data/
+

@@ -26,3 +26,4 @@ class UploadSession(Base):
     expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=datetime.utcnow)
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=datetime.utcnow)
+    finalized_file_blob_id: Mapped[int | None] = mapped_column(ForeignKey("file_blobs.id"), nullable=True)

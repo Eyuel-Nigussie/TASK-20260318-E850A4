@@ -135,12 +135,13 @@ stateDiagram-v2
 
 - Batch review hard cap `<= 50`.
 - Upload chunk cap defaults to 5MB.
-- Several list endpoints currently read full filtered rows then apply in-memory pagination.
+- Core list endpoints use SQL-level `COUNT + OFFSET/LIMIT` pagination in services (`review`, `finance`, `system`).
 
 ## 10) Backup and Recovery
 
 - Manual backup API: creates JSON DB snapshot (selected tables) + tar.gz storage archive + metadata JSON + `backup_records` row.
 - Startup schedules a daily backup loop (default hour 02:00 UTC).
+- Scheduler failures are explicitly recorded (audit with `error_code=SCHEDULER_ERROR`) and logged (no silent swallow).
 - Restore API supports in-place storage restore with required confirmation and optional pre-restore backup.
 
 ## 11) Failure Handling (Implemented)
@@ -204,7 +205,20 @@ stateDiagram-v2
 
 - Startup launches a daily scheduler loop.
 - On successful scheduled backup, normal backup records are created.
-- On scheduler failure, an explicit failed audit entry is written (`error_code=SCHEDULER_ERROR`) instead of silent swallow.
+- On scheduler failure, an explicit failed audit entry is written (`error_code=SCHEDULER_ERROR`) and logged.
+
+## 22) Access Control Hardening
+
+- `GET /users/{user_id}/profile`:
+  - `SYSTEM_ADMIN`: any user profile, unmasked
+  - non-admin: self-only access (`user_id == requester_id`) and masked fields
+
+## 23) Sensitive Configuration Encryption
+
+- Sensitive configuration encryption helper uses cryptographic Fernet tokens derived from local secret material (not base64 obfuscation).
+
+## 24) Additional Runtime Invariants
+
 - Review state legality: service transition map.
 - Finance account/activity consistency: service check.
 - Overrun >110% expense rule:
@@ -215,7 +229,8 @@ stateDiagram-v2
 
 - Uploads are linked through `registration_form_id` and `checklist_id` and recorded in material versions.
 - Review transitions mutate registration status and create workflow records.
-- Finance transactions attach optional invoice `file_blob_id` (resolved from finalized upload session).
+- Finance transactions attach optional invoice `file_blob_id` via deterministic upload-session linkage (`upload_sessions.finalized_file_blob_id`).
+
 - Quality metrics aggregate from registration status and confirmed expenses.
 
 ## 16) API Response and Error Envelope
