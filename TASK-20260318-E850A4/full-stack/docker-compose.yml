@@ -1,0 +1,57 @@
+services:
+  postgres:
+    image: postgres:16
+    container_name: activity_postgres
+    environment:
+      POSTGRES_USER: platform_user
+      POSTGRES_PASSWORD: platform_pass
+      POSTGRES_DB: platform_db
+    ports:
+      - "${POSTGRES_PORT:-15432}:5432"
+    volumes:
+      - pg_data:/var/lib/postgresql/data
+      - ./shared/database/init:/docker-entrypoint-initdb.d
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U platform_user -d platform_db"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  backend:
+    build:
+      context: ./backend
+    container_name: activity_backend
+    environment:
+      APP_ENV: ${APP_ENV:-production}
+      DATABASE_URL: ${DATABASE_URL:-postgresql+psycopg2://platform_user:platform_pass@postgres:5432/platform_db}
+      JWT_ACCESS_SECRET: ${JWT_ACCESS_SECRET:-access_secret_change_in_prod}
+      JWT_REFRESH_SECRET: ${JWT_REFRESH_SECRET:-refresh_secret_change_in_prod}
+      CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:5173,http://localhost:15173}
+    depends_on:
+      postgres:
+        condition: service_healthy
+    ports:
+      - "${BACKEND_PORT:-18000}:8000"
+    volumes:
+      - app_storage:/data/storage
+      - backup_data:/data/backups
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health', timeout=3)"]
+      interval: 15s
+      timeout: 5s
+      retries: 10
+
+  frontend:
+    build:
+      context: ./frontend
+    container_name: activity_frontend
+    depends_on:
+      backend:
+        condition: service_healthy
+    ports:
+      - "${FRONTEND_PORT:-15173}:80"
+
+volumes:
+  pg_data:
+  app_storage:
+  backup_data:

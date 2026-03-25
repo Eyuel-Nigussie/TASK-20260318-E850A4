@@ -1,0 +1,36 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+*.egg-info/
+dist/
+build/
+.venv/
+venv/
+env/
+
+# Node / Frontend
+node_modules/
+frontend/dist/
+frontend/.vite/
+*.tsbuildinfo
+
+# Env / secrets
+.env
+
+# Temp / audit artifacts
+.tmp/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Session / trajectory artifacts
+session.json
+trajectory.json
+
+# Docker volumes (if accidentally materialised locally)
+data/
