@@ -44,15 +44,16 @@ function onLogout() {
 
 <style scoped>
 .dashboard {
-  max-width: 760px;
+  width: min(1100px, 100%);
+  margin: 0 auto;
 }
 
 .card {
-  padding: 24px;
+  padding: 28px;
   background: #ffffff;
   border: 1px solid #dce4eb;
-  border-radius: 14px;
-  box-shadow: 0 8px 24px rgba(11, 28, 43, 0.08);
+  border-radius: 16px;
+  box-shadow: 0 16px 40px rgba(11, 28, 43, 0.1);
 }
 
 .tabs {

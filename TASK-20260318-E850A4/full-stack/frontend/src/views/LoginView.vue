@@ -1,50 +1,52 @@
 <template>
-  <section class="login-card">
-    <div class="mode-switch">
-      <button type="button" :class="{ active: mode === 'signin' }" @click="mode = 'signin'">Sign In</button>
-      <button type="button" :class="{ active: mode === 'signup' }" @click="mode = 'signup'">Sign Up</button>
+  <section class="login-layout">
+    <div class="login-card">
+      <div class="mode-switch">
+        <button type="button" :class="{ active: mode === 'signin' }" @click="mode = 'signin'">Sign In</button>
+        <button type="button" :class="{ active: mode === 'signup' }" @click="mode = 'signup'">Sign Up</button>
+      </div>
+
+      <h2>{{ mode === "signin" ? "Sign In" : "Create Account" }}</h2>
+      <p class="hint">Use seeded admin account: <code>sysadmin / Admin#123456</code></p>
+
+      <form v-if="mode === 'signin'" @submit.prevent="onSubmitSignIn">
+        <label>
+          Username
+          <input v-model="username" autocomplete="username" required minlength="3" maxlength="64" />
+        </label>
+        <label>
+          Password
+          <input v-model="password" type="password" autocomplete="current-password" required minlength="8" maxlength="256" />
+        </label>
+
+        <button type="submit" :disabled="auth.loading">
+          {{ auth.loading ? "Signing in..." : "Sign in" }}
+        </button>
+      </form>
+
+      <form v-else @submit.prevent="onSubmitSignUp">
+        <label>
+          Email
+          <input v-model="signupEmail" type="email" autocomplete="email" required />
+        </label>
+        <label>
+          Password
+          <input v-model="signupPassword" type="password" autocomplete="new-password" required minlength="8" maxlength="256" />
+        </label>
+        <label>
+          Confirm Password
+          <input v-model="signupConfirmPassword" type="password" autocomplete="new-password" required minlength="8" maxlength="256" />
+        </label>
+
+        <button type="submit" :disabled="auth.loading">
+          {{ auth.loading ? "Creating account..." : "Create account" }}
+        </button>
+      </form>
+
+      <p v-if="auth.error" class="error">{{ auth.error }}</p>
+      <p v-else-if="auth.successMessage" class="success toast">{{ auth.successMessage }}</p>
+      <p v-else-if="auth.accessToken" class="success">Logged in as {{ auth.username }} ({{ auth.role }})</p>
     </div>
-
-    <h2>{{ mode === "signin" ? "Sign In" : "Create Account" }}</h2>
-    <p class="hint">Use seeded admin account: <code>sysadmin / Admin#123456</code></p>
-
-    <form v-if="mode === 'signin'" @submit.prevent="onSubmitSignIn">
-      <label>
-        Username
-        <input v-model="username" autocomplete="username" required minlength="3" maxlength="64" />
-      </label>
-      <label>
-        Password
-        <input v-model="password" type="password" autocomplete="current-password" required minlength="8" maxlength="256" />
-      </label>
-
-      <button type="submit" :disabled="auth.loading">
-        {{ auth.loading ? "Signing in..." : "Sign in" }}
-      </button>
-    </form>
-
-    <form v-else @submit.prevent="onSubmitSignUp">
-      <label>
-        Email
-        <input v-model="signupEmail" type="email" autocomplete="email" required />
-      </label>
-      <label>
-        Password
-        <input v-model="signupPassword" type="password" autocomplete="new-password" required minlength="8" maxlength="256" />
-      </label>
-      <label>
-        Confirm Password
-        <input v-model="signupConfirmPassword" type="password" autocomplete="new-password" required minlength="8" maxlength="256" />
-      </label>
-
-      <button type="submit" :disabled="auth.loading">
-        {{ auth.loading ? "Creating account..." : "Create account" }}
-      </button>
-    </form>
-
-    <p v-if="auth.error" class="error">{{ auth.error }}</p>
-    <p v-else-if="auth.successMessage" class="success toast">{{ auth.successMessage }}</p>
-    <p v-else-if="auth.accessToken" class="success">Logged in as {{ auth.username }} ({{ auth.role }})</p>
   </section>
 </template>
 
@@ -83,13 +85,21 @@ async function onSubmitSignUp() {
 </script>
 
 <style scoped>
+.login-layout {
+  min-height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
 .login-card {
-  max-width: 420px;
-  padding: 24px;
+  width: min(460px, 100%);
+  margin: 0 auto;
+  padding: 28px;
   background: #ffffff;
   border: 1px solid #dce4eb;
-  border-radius: 14px;
-  box-shadow: 0 8px 24px rgba(11, 28, 43, 0.08);
+  border-radius: 16px;
+  box-shadow: 0 16px 40px rgba(11, 28, 43, 0.1);
 }
 
 h2 {

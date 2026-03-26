@@ -1,10 +1,14 @@
 <template>
   <div class="app-shell">
     <header>
-      <h1>Activity Registration and Funding Audit Platform</h1>
+      <div class="header-inner">
+        <h1>Activity Registration and Funding Audit Platform</h1>
+      </div>
     </header>
     <main>
-      <RouterView />
+      <div class="content-shell">
+        <RouterView />
+      </div>
     </main>
   </div>
 </template>
@@ -20,8 +24,13 @@
 }
 
 header {
-  padding: 24px;
+  padding: 18px 24px;
   border-bottom: 1px solid #dce4eb;
+}
+
+.header-inner {
+  max-width: 1180px;
+  margin: 0 auto;
 }
 
 h1 {
@@ -30,6 +39,15 @@ h1 {
 }
 
 main {
-  padding: 24px;
+  min-height: calc(100vh - 74px);
+  padding: 28px 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.content-shell {
+  width: min(1180px, 100%);
+  margin: 0 auto;
 }
 </style>
